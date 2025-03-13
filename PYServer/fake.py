@@ -34,7 +34,7 @@ def time():
     return json.dumps(t)
 
 
-
+# Tasks
 # 0 'Name'
 # 1 'Id'
 # 2 'Current Priorty'
@@ -61,6 +61,42 @@ def taskStats():
                 
 
     return json.dumps(tasks)
+
+# Heap
+# 0 Avl in Bytes
+# 1 Free Blocks
+# 2 Malloc
+# 3 Free
+
+heap = [2048, 1, 0, 0]
+@app.route('/metrics/heapStats', methods=['GET', 'POST'])
+def heapStats():
+    heap[0] = heap[0]- random.randint(0, 100)
+    if (heap[0] < 0):
+        heap[0] = 0
+    
+    m = random.randint(0, 5)
+    f = random.randint(0, 5)
+    if (f > m):
+        f = m
+    heap[2] = heap[2] + m
+    heap[3] = heap[3] + f
+                
+    return json.dumps(heap)
+
+@app.route('/metrics/msgs', methods=['GET', 'POST'])
+def msgs():
+    m = []
+    
+    count = random.randint(0, 2)
+    
+    if count > 0:
+        for i in range(count):
+            m.append("Test Message %d"%(i))
+                
+    return json.dumps(m)
+
+
 
 
 if __name__ == "__main__":

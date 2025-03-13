@@ -31,110 +31,20 @@
 			
 			var metrics = {};
 			
-			var testData = [
-			["Task A", 1, 10, 10, 256,  1200],
-			["Task B", 2, 10, 10, 300,  1000],
-			["Task C", 3, 10, 10, 500,  700],
-			["Task D", 4, 10, 10, 800,  500],
-			["Task E", 5, 10, 10, 100,  2000],
-			];
 			
-			
-			
-			function drawTable(tdata) {
-		        
-		
-		        table = new google.visualization.Table(document.getElementById('table_div'));
-		
-		        table.draw(tdata, {showRowNumber: true, width: '100%', height: '100%'});
-		        metrics.taskCharts.table = {
-					'chart': table,
-					'view': tdata,
-					'options': {},
-					'current': false
-					};
-		        
-		      }
-			
-			function drawTelTable() {
-		        var data = new google.visualization.DataTable();
-		        data.addColumn('number', 'Id');
-		        data.addColumn('string', 'Name');
-		        
-		        for (i=0; i < 100; i++){
-					r = [[i, "Test data"]]
-					data.addRows(r);
-				}
-		        
-		
-		        var table = new google.visualization.Table(document.getElementById('table2_div'));
-		
-		        table.draw(data, {showRowNumber: true, width: '100%', height: '100%'});
-		      }
 
-			function drawChart(tdata) {
+
 			
-			// Set Data
-			const data = google.visualization.arrayToDataTable([
-			  ['Contry', 'Mhl'],
-			  ['Italy', 55],
-			  ['France', 49],
-			  ['Spain', 44],
-			  ['USA', 24],
-			  ['Argentina', 15]
-			]);
-			
-			// Set Options
-			const options = {
-			  title: 'Test chart'
-			};
-			
-			
-			var view = new google.visualization.DataView(tdata);
-			view.setColumns([0, 4]);
-			
-			// Draw
-			const chart = new google.visualization.BarChart(document.getElementById('myChart'));
-			chart.draw(view, options);
-			
-			}
-			
-			function drawPie(view) {
-					
-				// Set Options
-				const options = {
-				  title: 'Test chart'
-				};		
-				
-				// Draw
-				const chart = new google.visualization.PieChart(document.getElementById('myChart2'));
-				chart.draw(view, options);
-			
-			}
 			
 			function drawStuff(){
 				metricsInit();
-				var tdata = new google.visualization.DataTable();
-		        tdata.addColumn('string', 'Name');
-		        tdata.addColumn('number', 'Id');
-		      	tdata.addColumn('number', 'Current Priorty');
-		      	tdata.addColumn('number', 'Base Priorty');
-		      	tdata.addColumn('number', 'High Water Mark');
-		      	tdata.addColumn('number', 'Runtime Counter');
-		        tdata.addRows(testData);
-		        
-				drawChart(tdata);
-				//drawTable(tdata);
-				drawTable(metrics.taskMetrics);
-				drawTelTable();
-				
-				var view = new google.visualization.DataView(tdata);
-				view.setColumns([0, 5]);
-				drawPie(view);
 				
 				metricsDrawCPUCharts();
 				metricsDrawStackCharts();
 				metricsDrawTaskTable();
+				metricsDrawHeapCharts();
+				
+				metricsDrawMsgs();
 				
 			}
 			
@@ -151,6 +61,27 @@
 		      	metrics.taskMetrics = tdata;
 		      	metrics.taskLatest = new Date(Date.now());
 		      	metrics.taskCharts = {};
+		      	
+		      	
+		      	tdata = new google.visualization.DataTable();
+				tdata.addColumn('datetime', 'Timestamp');
+		        tdata.addColumn('number', 'Avalable Bytes');
+		      	tdata.addColumn('number', 'Blocks');
+		      	tdata.addColumn('number', 'Malloc Count');
+		      	tdata.addColumn('number', 'Free Count');
+		      	metrics.heapMetrics = tdata;
+		      	metrics.heapLatest = new Date(Date.now());
+		      	metrics.heapCharts = {};
+		      	
+		      	tdata = new google.visualization.DataTable();
+				tdata.addColumn('datetime', 'Timestamp');
+		        tdata.addColumn('string', 'Message');
+		      	metrics.msgsMetrics = tdata;
+		      	metrics.msgsLatest = new Date(Date.now());
+		      	tdata.addRows([[metrics.msgsLatest, "Web Started"]]);
+		      	metrics.msgsCharts = {};
+		      	
+		      	
 			}
 			
 			function updateTaskMetrics(arr){
@@ -181,6 +112,77 @@
 				refreshTaskCharts();
 				
 				//metrics.taskTable.draw(metrics.taskMetrics);
+			}
+			
+			function updateHeapMetrics(arr){
+				
+				var now = new Date(Date.now());
+				arr.unshift(now);
+				
+				metrics.heapMetrics.addRows([arr]);	
+				metrics.heapLatest = now;
+				
+				refreshHeapCharts();
+				
+				//metrics.taskTable.draw(metrics.taskMetrics);
+			}
+			
+			function updateMsgs(arr){
+				
+				var rows = []
+				var now = new Date(Date.now());
+				
+				for (var i=0; i < arr.length; i++){
+					rows.push([now, arr[i]]);
+				}
+				if (rows.length > 0){
+					metrics.msgsMetrics.addRows(rows);	
+					metrics.msgsLatest = now;
+					refreshMsgsCharts();
+				}
+					
+				//metrics.taskTable.draw(metrics.taskMetrics);
+			}
+			
+			function refreshMsgsCharts(){
+				for (var n in metrics.msgsCharts){
+					var item = metrics.msgsCharts[n];
+					if (item.current){
+						var cols = item.view.getViewColumns();
+						item.view = new google.visualization.DataView(metrics.msgsMetrics);
+						item.view.setRows(
+							item.view.getFilteredRows(
+								[
+									{column: 0, value: metrics.msgsLatest}
+								]
+							)
+						);
+						item.view.setColumns(cols);
+					}
+					
+					item.chart.draw(item.view, item.options);
+				}
+			}
+			
+			function refreshHeapCharts(){			
+				for (var n in metrics.heapCharts){
+					var item = metrics.heapCharts[n];
+					if (item.current){
+						var cols = item.view.getViewColumns();
+						item.view = new google.visualization.DataView(metrics.heapMetrics);
+						item.view.setRows(
+							item.view.getFilteredRows(
+								[
+									{column: 0, value: metrics.heapLatest}
+								]
+							)
+						);
+						item.view.setColumns(cols);
+					}
+					
+					item.chart.draw(item.view, item.options);
+				}
+				
 			}
 			
 			function refreshTaskCharts(){
@@ -222,6 +224,66 @@
 			    //alert("Current CPU rows " + metrics.taskCharts.currentCPU.view.getNumberOfRows());
 			}
 			
+			function metricsDrawHeapCharts(){
+				//Available Bytes Over time
+				var options = {
+			        chart: {
+			          title: 'Bytes Available Timeseries'
+			        },
+			        width: 500,
+			        height: 500
+			     };
+			     var chart = new google.charts.Line(document.getElementById('heap1'));
+			     var view = new google.visualization.DataView(metrics.heapMetrics);
+			     view.setColumns([0, 1]);
+			     chart.draw(view, google.charts.Line.convertOptions(options));
+			     metrics.heapCharts.heapAvl = {
+					'chart': chart,
+					'view': view,
+					'options': options,
+					'current': false
+				 }
+				 
+				//Malloc and Free Count Over time
+				options = {
+			        chart: {
+			          title: 'Malloc & Free Count Timeseries'
+			        },
+			        width: 500,
+			        height: 500
+			     };
+			     chart = new google.charts.Line(document.getElementById('heap2'));
+			     view = new google.visualization.DataView(metrics.heapMetrics);
+			     view.setColumns([0, 3, 4]);
+			     chart.draw(view, google.charts.Line.convertOptions(options));
+			     metrics.heapCharts.heapMallocFree = {
+					'chart': chart,
+					'view': view,
+					'options': options,
+					'current': false
+				 }
+				 
+ 				//Free Blocks Over time
+				options = {
+			        chart: {
+			          title: 'Free Blocks Timeseries'
+			        },
+			        width: 300,
+			        height: 500
+			     };
+			     chart = new google.charts.Line(document.getElementById('heap3'));
+			     view = new google.visualization.DataView(metrics.heapMetrics);
+			     view.setColumns([0, 2]);
+			     chart.draw(view, google.charts.Line.convertOptions(options));
+			     metrics.heapCharts.heapBlocks = {
+					'chart': chart,
+					'view': view,
+					'options': options,
+					'current': false
+				 }
+				
+			}
+			
 			
 			function metricsDrawTaskTable(){
 				var chart = new google.visualization.Table(document.getElementById('tasks1'));
@@ -238,7 +300,7 @@
 					)
 				);
 				view.setColumns([1,2,3,4,5,6]);
-		        table.draw(view, options);
+		        chart.draw(view, options);
 		        metrics.taskCharts.tasksCurrent = {
 					'chart': chart,
 					'view': view,
@@ -356,6 +418,21 @@
 				
 			}
 			
+			function metricsDrawMsgs() {
+				
+		        var chart = new google.visualization.Table(document.getElementById('msgs'));
+		        var options = {showRowNumber: true, width: '100%'};//, height: '100%'}
+				var view = metrics.msgsMetrics;
+		        chart.draw(view, options);
+		        
+		        metrics.msgsCharts.msgsTable = {
+					'chart': chart,
+					'view': view,
+					'options': options,
+					'current': false
+				 }
+		      }
+			
 			
 			function metricsRowToColumns(table, timeColumn, nameColumn, dataColumn){
 				var tdata = new google.visualization.DataTable();
@@ -397,36 +474,62 @@
 				
 			}
 			
-			
-			$(document).ready(function(){
-			  $("#getDiv").click(function(){
-			    $("#div1").load("http://localhost:8080/metrics/taskStats", function(responseTxt, statusTxt, xhr){
-			      if(statusTxt == "success")
-			        alert("External content loaded successfully!");
-			      if(statusTxt == "error")
-			        alert("Error: " + xhr.status + ": " + xhr.statusText);
-			    });
-			  });
-			  $("#getVar").click(function(){
-				  $.get("http://localhost:8080/metrics/taskStats", function(data, status){
+			function metricsUpdate(){
+				var host = $("#pico").val();
+				var port = $("#port").val();
+				var url = "http://"+host +":" + port + "/metrics/";
+				
+				$.get(url+"taskStats", function(data, status){
 					if (status == "success"){
 						var obj = JSON.parse(data);
 						updateTaskMetrics(obj);
 					}
-				    //alert("Data: " + data + "\nStatus: " + status);
-				  });
 				});
-			});
+				  
+				$.get(url + "heapStats", function(data, status){
+					if (status == "success"){
+						var obj = JSON.parse(data);
+						updateHeapMetrics(obj);
+					}
+				});
+				  
+				$.get(url+"msgs", function(data, status){
+					if (status == "success"){
+						var obj = JSON.parse(data);
+						updateMsgs(obj);
+					}
+				});
+			}
+			
+			function metricsStop(){
+				clearTimeout(metrics.timer);
+			}
+			
+			function metricsStart(){
+				var t = $("#frequency").val() * 1000;
+				metrics.timer = setInterval(metricsUpdate, t);
+				metricsUpdate();
+			}
+			
 
 		</script>
 		
 		
 	</head>
 	<body>
-		<H1>Test</H1>
-		<div id="div1"><h2>Let jQuery AJAX Change This Text</h2></div>
-		<button id="getDiv">Get To DIV</button>
-		<button id="getVar">Get Var</button>
+		
+		<H1>FreeRTOS Data from Pico</H1>
+		<form action="javascript:metricsStart()">
+		  <label for="pico">Pico Host/IP:</label>
+		  <input type="text" id="pico" name="pico" value="localhost">
+		  <label for="port">Port:</label>
+		  <input type="number" id="port" name="port" value="8080">
+		  <label for="frequency">Frequency (secs):</label>
+		  <input type="number" id="frequency" name="frequency" value="2">
+		  <input type="submit" value="Start">
+		  <input id="stop" type="button" value="stop" onclick="metricsStop();" />
+		</form> 
+		
 		
 		<H1>CPU Usage</H1>
 		<table>
@@ -448,12 +551,17 @@
 		<h1>Task Details</h1>
 		<div id="tasks1"></div>
 		
+		<H1>Heap Usage</H1>
+		<table>
+			<tr>
+				<td><div id="heap1"></div></td>
+				<td><div id="heap2"></div></td>
+				<td><div id="heap3"></div></td>
+			</tr>
+		</table>
 		
 		
-		<H1>Test Page</H1>
-		<div id="myChart" style="max-width:700px; height:400px"></div>
-		<div id="myChart2" style="max-width:700px; height:400px"></div>
-		<div id="table_div" style="max-width:700px; height:400px"></div>
-		<div id="table2_div" style="max-width:700px; height:400px"></div>
+		<H1>Messages</H1>
+		<div id="msgs"></div>
 	</body>
 </html>
