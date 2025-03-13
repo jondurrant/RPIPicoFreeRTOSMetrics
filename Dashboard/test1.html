@@ -1,0 +1,113 @@
+<html>
+	<head>
+		<script src="https://www.gstatic.com/charts/loader.js"></script>
+		<script>
+			google.charts.load('current',{packages:['corechart', 'table']});
+			google.charts.setOnLoadCallback(drawStuff);
+			
+			var testData = [
+			["Task A", 1, 10, 10, 256,  1200],
+			["Task B", 2, 10, 10, 300,  1000],
+			["Task C", 3, 10, 10, 500,  700],
+			["Task D", 4, 10, 10, 800,  500],
+			["Task E", 5, 10, 10, 100,  2000],
+			];
+			
+			
+			
+			function drawTable(tdata) {
+		        
+		
+		        var table = new google.visualization.Table(document.getElementById('table_div'));
+		
+		        table.draw(tdata, {showRowNumber: true, width: '100%', height: '100%'});
+		      }
+			
+			function drawTelTable() {
+		        var data = new google.visualization.DataTable();
+		        data.addColumn('number', 'Id');
+		        data.addColumn('string', 'Name');
+		        
+		        for (i=0; i < 100; i++){
+					r = [[i, "Test data"]]
+					data.addRows(r);
+				}
+		        
+		
+		        var table = new google.visualization.Table(document.getElementById('table2_div'));
+		
+		        table.draw(data, {showRowNumber: true, width: '100%', height: '100%'});
+		      }
+
+			function drawChart(tdata) {
+			
+			// Set Data
+			const data = google.visualization.arrayToDataTable([
+			  ['Contry', 'Mhl'],
+			  ['Italy', 55],
+			  ['France', 49],
+			  ['Spain', 44],
+			  ['USA', 24],
+			  ['Argentina', 15]
+			]);
+			
+			// Set Options
+			const options = {
+			  title: 'Test chart'
+			};
+			
+			
+			var view = new google.visualization.DataView(tdata);
+			view.setColumns([0, 4]);
+			
+			// Draw
+			const chart = new google.visualization.BarChart(document.getElementById('myChart'));
+			chart.draw(view, options);
+			
+			}
+			
+			function drawPie(view) {
+					
+				// Set Options
+				const options = {
+				  title: 'Test chart'
+				};		
+				
+				// Draw
+				const chart = new google.visualization.PieChart(document.getElementById('myChart2'));
+				chart.draw(view, options);
+			
+			}
+			
+			function drawStuff(){
+				var tdata = new google.visualization.DataTable();
+		        tdata.addColumn('string', 'Name');
+		        tdata.addColumn('number', 'Id');
+		      	tdata.addColumn('number', 'Current Priorty');
+		      	tdata.addColumn('number', 'Base Priorty');
+		      	tdata.addColumn('number', 'High Water Mark');
+		      	tdata.addColumn('number', 'Runtime Counter');
+		        tdata.addRows(testData);
+		        
+				drawChart(tdata);
+				drawTable(tdata);
+				drawTelTable();
+				
+				var view = new google.visualization.DataView(tdata);
+				view.setColumns([0, 5]);
+				drawPie(view);
+				
+			}
+
+		</script>
+		
+		
+	</head>
+	<body>
+		<H1>Test Page</H1>
+		<div id="myChart" style="max-width:700px; height:400px"></div>
+		<div id="myChart2" style="max-width:700px; height:400px"></div>
+		<div id="table_div" style="max-width:700px; height:400px"></div>
+		<div id="table2_div" style="max-width:700px; height:400px"></div>
+	</body>
+</html>

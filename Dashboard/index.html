@@ -1,0 +1,459 @@
+<html>
+	<head>
+		<style>
+			/* Create three equal columns that floats next to each other */
+			.threeColumn {
+			  float: left;
+			  width: 33.33%;
+			  padding: 10px;
+			  height: 300px; /* Should be removed. Only for demonstration */
+			}
+			
+			/* Clear floats after the columns */
+			.threeColumnRow:after {
+			  content: "";
+			  display: table;
+			  clear: both;
+			}
+			
+			/* Responsive layout - makes the three columns stack on top of each other instead of next to each other */
+			@media screen and (max-width: 600px) {
+			  .threeColumn {
+			    width: 100%;
+			  }
+			}
+		</style>
+		<script src="https://www.gstatic.com/charts/loader.js"></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+		<script>
+			google.charts.load('current',{packages:['corechart', 'table', 'line']});
+			google.charts.setOnLoadCallback(drawStuff);
+			
+			var metrics = {};
+			
+			var testData = [
+			["Task A", 1, 10, 10, 256,  1200],
+			["Task B", 2, 10, 10, 300,  1000],
+			["Task C", 3, 10, 10, 500,  700],
+			["Task D", 4, 10, 10, 800,  500],
+			["Task E", 5, 10, 10, 100,  2000],
+			];
+			
+			
+			
+			function drawTable(tdata) {
+		        
+		
+		        table = new google.visualization.Table(document.getElementById('table_div'));
+		
+		        table.draw(tdata, {showRowNumber: true, width: '100%', height: '100%'});
+		        metrics.taskCharts.table = {
+					'chart': table,
+					'view': tdata,
+					'options': {},
+					'current': false
+					};
+		        
+		      }
+			
+			function drawTelTable() {
+		        var data = new google.visualization.DataTable();
+		        data.addColumn('number', 'Id');
+		        data.addColumn('string', 'Name');
+		        
+		        for (i=0; i < 100; i++){
+					r = [[i, "Test data"]]
+					data.addRows(r);
+				}
+		        
+		
+		        var table = new google.visualization.Table(document.getElementById('table2_div'));
+		
+		        table.draw(data, {showRowNumber: true, width: '100%', height: '100%'});
+		      }
+
+			function drawChart(tdata) {
+			
+			// Set Data
+			const data = google.visualization.arrayToDataTable([
+			  ['Contry', 'Mhl'],
+			  ['Italy', 55],
+			  ['France', 49],
+			  ['Spain', 44],
+			  ['USA', 24],
+			  ['Argentina', 15]
+			]);
+			
+			// Set Options
+			const options = {
+			  title: 'Test chart'
+			};
+			
+			
+			var view = new google.visualization.DataView(tdata);
+			view.setColumns([0, 4]);
+			
+			// Draw
+			const chart = new google.visualization.BarChart(document.getElementById('myChart'));
+			chart.draw(view, options);
+			
+			}
+			
+			function drawPie(view) {
+					
+				// Set Options
+				const options = {
+				  title: 'Test chart'
+				};		
+				
+				// Draw
+				const chart = new google.visualization.PieChart(document.getElementById('myChart2'));
+				chart.draw(view, options);
+			
+			}
+			
+			function drawStuff(){
+				metricsInit();
+				var tdata = new google.visualization.DataTable();
+		        tdata.addColumn('string', 'Name');
+		        tdata.addColumn('number', 'Id');
+		      	tdata.addColumn('number', 'Current Priorty');
+		      	tdata.addColumn('number', 'Base Priorty');
+		      	tdata.addColumn('number', 'High Water Mark');
+		      	tdata.addColumn('number', 'Runtime Counter');
+		        tdata.addRows(testData);
+		        
+				drawChart(tdata);
+				//drawTable(tdata);
+				drawTable(metrics.taskMetrics);
+				drawTelTable();
+				
+				var view = new google.visualization.DataView(tdata);
+				view.setColumns([0, 5]);
+				drawPie(view);
+				
+				metricsDrawCPUCharts();
+				metricsDrawStackCharts();
+				metricsDrawTaskTable();
+				
+			}
+			
+			function metricsInit(){
+				var tdata = new google.visualization.DataTable();
+				tdata.addColumn('datetime', 'Timestamp');
+				tdata.addColumn('string', 'Name');
+		        tdata.addColumn('number', 'Id');
+		      	tdata.addColumn('number', 'Current Priorty');
+		      	tdata.addColumn('number', 'Base Priorty');
+		      	tdata.addColumn('number', 'High Water Mark');
+		      	tdata.addColumn('number', 'Runtime Counter');
+		      	tdata.addColumn('number', 'Delta Counter');
+		      	metrics.taskMetrics = tdata;
+		      	metrics.taskLatest = new Date(Date.now());
+		      	metrics.taskCharts = {};
+			}
+			
+			function updateTaskMetrics(arr){
+				var l = arr.length;
+				var now = new Date(Date.now());
+				for (var i = 0; i < l; i++) {
+				    arr[i].unshift(now);
+				    
+				    var r = metrics.taskMetrics.getFilteredRows(
+						[
+							{column: 0, value: metrics.taskLatest}, 
+							{column: 2, value: arr[i][2]} 
+						]
+					);
+					if (r.length != 0){
+						var pCount = metrics.taskMetrics.getValue(r[0], 6);
+						var dCount = arr[i][6] - pCount;
+						arr[i].push(dCount);
+					} else {
+						arr[i].push(0);
+					}
+					
+				}
+				
+				metrics.taskMetrics.addRows(arr);	
+				metrics.taskLatest = now;
+				
+				refreshTaskCharts();
+				
+				//metrics.taskTable.draw(metrics.taskMetrics);
+			}
+			
+			function refreshTaskCharts(){
+				
+				for (var n in metrics.taskCharts){
+					var item = metrics.taskCharts[n];
+					if (item.current){
+						var cols = item.view.getViewColumns();
+						item.view = new google.visualization.DataView(metrics.taskMetrics);
+						item.view.setRows(
+							item.view.getFilteredRows(
+								[
+									{column: 0, value: metrics.taskLatest}
+								]
+							)
+						);
+						item.view.setColumns(cols);
+					}
+					
+					item.chart.draw(item.view, item.options);
+				}
+				
+				
+				metrics.taskCharts.timelineCPU.view = metricsRowToColumns(metrics.taskMetrics, 0, 1, 7);
+			    metrics.taskCharts.timelineCPU.chart.draw(
+					metrics.taskCharts.timelineCPU.view, 
+					google.charts.Line.convertOptions(
+						metrics.taskCharts.timelineCPU.options
+					)
+				);
+				
+				metrics.taskCharts.stackTimeline.view = metricsRowToColumns(metrics.taskMetrics, 0, 1, 5);
+			    metrics.taskCharts.stackTimeline.chart.draw(
+					metrics.taskCharts.stackTimeline.view, 
+					google.charts.Line.convertOptions(metrics.taskCharts.stackTimeline.options)
+				);
+			     		
+			    //alert("timeline CPU rows " + metrics.taskCharts.timelineCPU.view.getNumberOfRows());
+			    //alert("Current CPU rows " + metrics.taskCharts.currentCPU.view.getNumberOfRows());
+			}
+			
+			
+			function metricsDrawTaskTable(){
+				var chart = new google.visualization.Table(document.getElementById('tasks1'));
+				var options = {
+					title: 'Task Detail - Current',
+					showRowNumber: true, width: '100%', height: '100%'
+				};
+				var view = new google.visualization.DataView(metrics.taskMetrics);
+				view.setRows(
+					view.getFilteredRows(
+						[
+							{column: 0, value: metrics.taskLatest}
+						]
+					)
+				);
+				view.setColumns([1,2,3,4,5,6]);
+		        table.draw(view, options);
+		        metrics.taskCharts.tasksCurrent = {
+					'chart': chart,
+					'view': view,
+					'options': true,
+					'current': true
+					};
+			}
+			
+			
+			function metricsDrawStackCharts(){
+				//Current High Water Mark
+				var options = {
+			  		title: 'High Water Mark'
+				};
+				var view = new google.visualization.DataView(metrics.taskMetrics);
+				view.setRows(
+					view.getFilteredRows(
+						[
+							{column: 0, value: metrics.taskLatest}
+						]
+					)
+				);
+				view.setColumns([1, 5]);
+				var chart = new google.visualization.BarChart(document.getElementById('stack1'));
+				chart.draw(view, options);
+				metrics.taskCharts.stackCurrent = {
+					'chart': chart,
+					'view': view,
+					'options': options,
+					'current': true
+				}
+				
+				//High Water Mark Over time
+				options = {
+			        chart: {
+			          title: 'High Water Mark Timeseries'
+			        },
+			        width: 900,
+			        height: 500
+			     };
+			     chart = new google.charts.Line(document.getElementById('stack2'));
+			     view = metricsRowToColumns(metrics.taskMetrics, 0, 1, 5);
+			     chart.draw(view, google.charts.Line.convertOptions(options));
+			     metrics.taskCharts.stackTimeline = {
+					'chart': chart,
+					'view': view,
+					'options': options,
+					'current': false
+				 }
+				
+			}
+			
+			function metricsDrawCPUCharts(){
+				// Total CPU
+				var options = {
+				  title: 'Total CPU Share'
+				};		
+				var view = new google.visualization.DataView(metrics.taskMetrics);	
+				var chart = new google.visualization.PieChart(document.getElementById('cpu1'));	
+				view.setRows(
+					view.getFilteredRows(
+						[
+							{column: 0, value: metrics.taskLatest}
+						]
+					)
+				);
+				view.setColumns([1, 6]);
+				chart.draw(view, options);
+				metrics.taskCharts.totalCPU = {
+					'chart': chart,
+					'view': view,
+					'options': options,
+					'current': true
+				}
+				
+				// Current CPU
+				options = {
+				  title: 'Current CPU Share'
+				};		
+				view = new google.visualization.DataView(metrics.taskMetrics);
+				view.setRows(
+					view.getFilteredRows(
+						[
+							{column: 0, value: metrics.taskLatest}
+						]
+					)
+				);
+				view.setColumns([1, 7]);
+				chart = new google.visualization.PieChart(document.getElementById('cpu2'));
+				chart.draw(view, options);
+				metrics.taskCharts.currentCPU = {
+					'chart': chart,
+					'view': view,
+					'options': options,
+					'current': true
+				}
+				
+				//CPU Over time
+				options = {
+			        chart: {
+			          title: 'CPU Timeseries'
+			        },
+			        width: 900,
+			        height: 500
+			     };
+			     chart = new google.charts.Line(document.getElementById('cpu3'));
+			     view = metricsRowToColumns(metrics.taskMetrics, 0, 1, 7);
+			     chart.draw(view, google.charts.Line.convertOptions(options));
+			     metrics.taskCharts.timelineCPU = {
+					'chart': chart,
+					'view': view,
+					'options': options,
+					'current': false
+				 }
+				
+			}
+			
+			
+			function metricsRowToColumns(table, timeColumn, nameColumn, dataColumn){
+				var tdata = new google.visualization.DataTable();
+				tdata.addColumn('datetime', 'Timestamp');
+				colNames = table.getDistinctValues(nameColumn);
+				for (var i=0; i < colNames.length; i++){
+					tdata.addColumn('number', colNames[i]);		
+				}
+				if (colNames.length == 0){
+					tdata.addColumn('number', "No Data");
+					return tdata;	
+				}
+				
+				rows = table.getDistinctValues(timeColumn);
+				for (var i=0; i < rows.length; i++){
+					var row = rows[i];
+					var rowData = [];
+					rowData.push(row);
+					for (var j=0; j < colNames.length; j++){
+						var col = colNames[j];
+						var r = table.getFilteredRows([
+							{column: 0, value: row}, 
+							{column: 1, value: col} 
+						]);
+						if (r.length == 1){
+							rowData.push(table.getValue(r[0], dataColumn));
+						} else {
+							rowData.push(0);
+						}
+					}
+					if (rowData.length > 0){
+						tdata.addRows([rowData]);
+					}
+				}
+				
+				//alert("Rows " + rows.length + " " + rows);
+				
+				return tdata;
+				
+			}
+			
+			
+			$(document).ready(function(){
+			  $("#getDiv").click(function(){
+			    $("#div1").load("http://localhost:8080/metrics/taskStats", function(responseTxt, statusTxt, xhr){
+			      if(statusTxt == "success")
+			        alert("External content loaded successfully!");
+			      if(statusTxt == "error")
+			        alert("Error: " + xhr.status + ": " + xhr.statusText);
+			    });
+			  });
+			  $("#getVar").click(function(){
+				  $.get("http://localhost:8080/metrics/taskStats", function(data, status){
+					if (status == "success"){
+						var obj = JSON.parse(data);
+						updateTaskMetrics(obj);
+					}
+				    //alert("Data: " + data + "\nStatus: " + status);
+				  });
+				});
+			});
+
+		</script>
+		
+		
+	</head>
+	<body>
+		<H1>Test</H1>
+		<div id="div1"><h2>Let jQuery AJAX Change This Text</h2></div>
+		<button id="getDiv">Get To DIV</button>
+		<button id="getVar">Get Var</button>
+		
+		<H1>CPU Usage</H1>
+		<table>
+			<tr>
+				<td><div id="cpu1"></div></td>
+				<td><div id="cpu2"></div></td>
+				<td><div id="cpu3"></div></td>
+			</tr>
+		</table>
+		
+		<H1>Stack Usage</H1>
+		<table>
+			<tr>
+				<td><div id="stack1"></div></td>
+				<td><div id="stack2"></div></td>
+			</tr>
+		</table>
+		
+		<h1>Task Details</h1>
+		<div id="tasks1"></div>
+		
+		
+		
+		<H1>Test Page</H1>
+		<div id="myChart" style="max-width:700px; height:400px"></div>
+		<div id="myChart2" style="max-width:700px; height:400px"></div>
+		<div id="table_div" style="max-width:700px; height:400px"></div>
+		<div id="table2_div" style="max-width:700px; height:400px"></div>
+	</body>
+</html>
