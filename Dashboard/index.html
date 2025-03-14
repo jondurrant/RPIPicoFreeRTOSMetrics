@@ -86,8 +86,14 @@
 			
 			function updateTaskMetrics(arr){
 				var l = arr.length;
+				if (l == 0){
+					return;
+				}
 				var now = new Date(Date.now());
 				for (var i = 0; i < l; i++) {
+					if (arr[i].length == 0){
+						return;
+					}
 				    arr[i].unshift(now);
 				    
 				    var r = metrics.taskMetrics.getFilteredRows(
@@ -115,6 +121,9 @@
 			}
 			
 			function updateHeapMetrics(arr){
+				if (arr.length == 0){
+					return;
+				}
 				
 				var now = new Date(Date.now());
 				arr.unshift(now);
@@ -128,6 +137,9 @@
 			}
 			
 			function updateMsgs(arr){
+				if (arr.length == 0){
+					return;
+				}
 				
 				var rows = []
 				var now = new Date(Date.now());
@@ -478,24 +490,33 @@
 				var host = $("#pico").val();
 				var port = $("#port").val();
 				var url = "http://"+host +":" + port + "/metrics/";
-				
+						
 				$.get(url+"taskStats", function(data, status){
 					if (status == "success"){
-						var obj = JSON.parse(data);
+						var obj = data;
+						if (typeof data === 'string' || data instanceof String){
+							obj = JSON.parse(data);
+						}
 						updateTaskMetrics(obj);
 					}
 				});
 				  
 				$.get(url + "heapStats", function(data, status){
 					if (status == "success"){
-						var obj = JSON.parse(data);
+						var obj = data;
+						if (typeof data === 'string' || data instanceof String){
+							obj = JSON.parse(data);
+						}
 						updateHeapMetrics(obj);
 					}
 				});
 				  
 				$.get(url+"msgs", function(data, status){
 					if (status == "success"){
-						var obj = JSON.parse(data);
+						var obj = data;
+						if (typeof data === 'string' || data instanceof String){
+							obj = JSON.parse(data);
+						}
 						updateMsgs(obj);
 					}
 				});
