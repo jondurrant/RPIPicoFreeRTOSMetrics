@@ -18,8 +18,7 @@ WebStats * WebStats::getInstance(){
 }
 
 WebStats::WebStats() {
-	// TODO Auto-generated constructor stub
-
+	xMsgBuffer = xMessageBufferCreate( WEBSTATS_MSG_BUFFER_SIZE );
 }
 
 WebStats::~WebStats() {
@@ -79,7 +78,8 @@ void WebStats::vTask( void * pvParameters ){
  void WebStats::run(){
 	struct mg_mgr mgr;        // Initialise Mongoose event manager
 	mg_mgr_init(&mgr);        // and attach it to the interface
-	mg_log_set(MG_LL_DEBUG);  // Set log level
+	//mg_log_set(MG_LL_DEBUG);  // Set log level
+	mg_log_set(MG_LL_INFO);
 
 	MG_INFO(("Initialising application..."));
 	mg_http_listen(&mgr, HTTP_URL, WebStats::mgCB, this);
@@ -92,25 +92,27 @@ void WebStats::vTask( void * pvParameters ){
 
  void WebStats::mgCB(struct mg_connection *c, int ev, void *ev_data){
  	if (ev == MG_EV_HTTP_MSG){
- 		   printf("GET REQUEST\n");
  			struct mg_http_message *hm = (struct mg_http_message *) ev_data;
  			if (mg_match(hm->uri, mg_str("/metrics/taskStats"), NULL)) {
- 				printf("GET taskStats\n");
+ 				//printf("GET taskStats\n");
  				mg_http_reply(c, 200,
  						"Content-Type: application/json\r\n",
 						WebStats::getInstance()->getTaskStats()
 				);
  			} else if (mg_match(hm->uri, mg_str("/metrics/heapStats"), NULL)) {
- 				printf("GET heapStats\n");
+ 				//printf("GET heapStats\n");
  				mg_http_reply(c, 200,
  						"Content-Type: application/json\r\n",
 						WebStats::getInstance()->getHeapStats()
 				);
  			} else if (mg_match(hm->uri, mg_str("/metrics/msgs"), NULL)) {
- 				printf("GET msg\n");
- 				mg_http_reply(c, 200, "Content-Type: application/json\r\n", "[\"test\"]");
+ 				//printf("GET msg\n");
+ 				mg_http_reply(c, 200,
+ 						"Content-Type: application/json\r\n",
+						WebStats::getInstance()->getMsgs()
+						);
 			}  else {
-				printf("GET UNKNOWN\n");
+				//printf("GET UNKNOWN\n");
 				mg_http_reply(c, 200, "Content-Type: application/json\r\n", "{\"result\": %m}", MG_ESC("Hello World"));
 			}
  			c->recv.len = 0;     // Clean receive buffer
@@ -175,3 +177,53 @@ void WebStats::vTask( void * pvParameters ){
 	}
 	return xBuffer;
  }
+
+
+ size_t WebStats::queueMsg(const char * msg){
+	 if (xMsgBuffer != NULL){
+		 return xMessageBufferSend(
+				 xMsgBuffer,
+				 msg,
+		         strlen(msg) + 1,
+		         0);
+	 }
+	 return 0;
+ }
+
+ char * WebStats::getMsgs(){
+
+	int pos = 0;
+	strcpy(xBuffer, "[ ");
+	pos = strlen(xBuffer);
+	char * out = &xBuffer[pos];
+
+	for (;;){
+		strcpy(out, "\"");
+		pos++;
+		out =  &xBuffer[pos];
+		//printf("1(%d) >%s< \n", pos, xBuffer);
+		size_t count = xMessageBufferReceive(
+				xMsgBuffer,
+				out,
+				WEBSTATS_BUFFER_SIZE - pos,
+				0 );
+		pos += count-1;
+		out = &xBuffer[pos];
+		//printf("2(%d) >%s< \n",pos,  xBuffer);
+		if (count == 0){
+			//Replace ," with ]
+			strcpy(&xBuffer[pos -1] ,"]");
+			//printf("3(%d) >%s< \n", pos, xBuffer);
+			break;
+		} else {
+			strcpy(out, "\",");
+			pos +=2;
+			out = &xBuffer[pos];
+			//printf("4(%d) >%s< \n", pos, xBuffer);
+		}
+	}
+
+	return xBuffer;
+ }
+
+

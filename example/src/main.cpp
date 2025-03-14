@@ -101,6 +101,7 @@ void mainTask(void *params){
 
 	while (true) { // Loop forever
 		//runTimeStats();
+		WebStats::getInstance()->queueMsg("Hello");
 		vTaskDelay(3000);
 	}
 }
